@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏</title>
+    <link rel="stylesheet" href="snake-style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">
+                <i class="fas fa-dragon"></i>
+                贪吃蛇
+            </h1>
+            <div class="theme-selector">
+                <button class="theme-btn" data-theme="classic">经典</button>
+                <button class="theme-btn active" data-theme="neon">霓虹</button>
+                <button class="theme-btn" data-theme="minimal">极简</button>
+            </div>
+        </header>
+
+        <div class="game-content">
+            <aside class="game-sidebar">
+                <div class="score-panel">
+                    <div class="score-item">
+                        <i class="fas fa-trophy"></i>
+                        <div class="score-info">
+                            <span class="score-label">当前分数</span>
+                            <span class="score-value" id="current-score">0</span>
+                        </div>
+                    </div>
+                    <div class="score-item">
+                        <i class="fas fa-crown"></i>
+                        <div class="score-info">
+                            <span class="score-label">最高分数</span>
+                            <span class="score-value" id="high-score">0</span>
+                        </div>
+                    </div>
+                    <div class="score-item">
+                        <i class="fas fa-ruler"></i>
+                        <div class="score-info">
+                            <span class="score-label">蛇身长度</span>
+                            <span class="score-value" id="snake-length">1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-controls">
+                    <button id="start-btn" class="control-btn primary">
+                        <i class="fas fa-play"></i>
+                        <span>开始游戏</span>
+                    </button>
+                    <button id="pause-btn" class="control-btn" disabled>
+                        <i class="fas fa-pause"></i>
+                        <span>暂停</span>
+                    </button>
+                    <button id="restart-btn" class="control-btn">
+                        <i class="fas fa-redo"></i>
+                        <span>重新开始</span>
+                    </button>
+                </div>
+
+                <div class="speed-control">
+                    <label for="speed-slider">游戏速度</label>
+                    <input type="range" id="speed-slider" min="1" max="5" value="3">
+                    <div class="speed-labels">
+                        <span>慢</span>
+                        <span>快</span>
+                    </div>
+                </div>
+
+                <div class="instructions">
+                    <h3>游戏说明</h3>
+                    <div class="instruction-item">
+                        <div class="keys">
+                            <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>
+                        </div>
+                        <span>或</span>
+                        <div class="keys">
+                            <kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd>
+                        </div>
+                        <p>控制蛇的移动方向</p>
+                    </div>
+                    <div class="instruction-item">
+                        <kbd>Space</kbd>
+                        <p>暂停/继续游戏</p>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="game-main">
+                <div class="game-area">
+                    <canvas id="gameCanvas" width="480" height="480"></canvas>
+                    
+                    <div class="game-overlay" id="game-overlay">
+                        <div class="overlay-content">
+                            <div class="overlay-icon">
+                                <i class="fas fa-play-circle"></i>
+                            </div>
+                            <h2 id="overlay-title">准备开始游戏</h2>
+                            <p id="overlay-message">按空格键或点击开始按钮开始游戏</p>
+                            <button id="overlay-btn" class="overlay-button">
+                                <i class="fas fa-play"></i>
+                                开始游戏
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="food-effect" id="food-effect">+10</div>
+                </div>
+
+                <div class="mobile-controls">
+                    <div class="dpad">
+                        <button class="dpad-btn dpad-up" data-direction="up">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <div class="dpad-middle">
+                            <button class="dpad-btn dpad-left" data-direction="left">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="dpad-btn dpad-right" data-direction="right">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <button class="dpad-btn dpad-down" data-direction="down">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <footer class="game-footer">
+            <div class="stats">
+                <div class="stat-item">
+                    <span>游戏时间: </span>
+                    <span id="game-time">00:00</span>
+                </div>
+                <div class="stat-item">
+                    <span>吃到食物: </span>
+                    <span id="food-count">0</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="snake-script.js"></script>
+</body>
+</html>
