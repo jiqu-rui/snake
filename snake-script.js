@@ -18,7 +18,10 @@ class SnakeGame {
         this.currentTheme = 'neon';
         this.gameSpeed = 150;
         this.nextDirection = null;
-        
+        this.isGameOver = false;
+        this.isNewHighScore = false;
+        this.gameLoopTimeoutId = null;
+
         this.initElements();
         this.bindEvents();
         this.updateDisplay();
@@ -86,14 +89,25 @@ class SnakeGame {
 
     handleResize() {
         const isMobile = window.innerWidth <= 768;
-        if (isMobile) {
-            this.canvas.width = 300;
-            this.canvas.height = 300;
-        } else {
-            this.canvas.width = 480;
-            this.canvas.height = 480;
+        const newSize = isMobile ? 300 : 480;
+        if (this.canvas.width === newSize) return;
+
+        this.canvas.width = newSize;
+        this.canvas.height = newSize;
+        this.tileCount = newSize / this.gridSize;
+
+        const inBounds = (pos) =>
+            pos.x >= 0 && pos.x < this.tileCount &&
+            pos.y >= 0 && pos.y < this.tileCount;
+
+        if (!this.snake.every(inBounds) || !inBounds(this.food)) {
+            this.snake = [{ x: Math.floor(this.tileCount / 2), y: Math.floor(this.tileCount / 2) }];
+            this.food = this.generateFood();
+            this.dx = 0;
+            this.dy = 0;
+            this.nextDirection = null;
         }
-        this.tileCount = this.canvas.width / this.gridSize;
+
         if (!this.gameRunning) {
             this.drawGame();
         }
@@ -133,6 +147,10 @@ class SnakeGame {
                 '<i class="fas fa-pause"></i><span>暂停</span>';
             
             if (this.gamePaused) {
+                if (this.gameLoopTimeoutId) {
+                    clearTimeout(this.gameLoopTimeoutId);
+                    this.gameLoopTimeoutId = null;
+                }
                 this.showOverlay('游戏暂停', '按空格键或点击继续按钮恢复游戏', 'fa-pause-circle');
                 this.overlayBtn.innerHTML = '<i class="fas fa-play"></i>继续游戏';
             } else {
@@ -143,8 +161,14 @@ class SnakeGame {
     }
 
     restartGame() {
+        if (this.gameLoopTimeoutId) {
+            clearTimeout(this.gameLoopTimeoutId);
+            this.gameLoopTimeoutId = null;
+        }
         this.gameRunning = false;
         this.gamePaused = false;
+        this.isGameOver = false;
+        this.isNewHighScore = false;
         this.snake = [{ x: 10, y: 10 }];
         this.food = this.generateFood();
         this.dx = 0;
@@ -152,11 +176,12 @@ class SnakeGame {
         this.score = 0;
         this.foodCount = 0;
         this.nextDirection = null;
-        
+
         this.startBtn.disabled = false;
         this.pauseBtn.disabled = true;
         this.pauseBtn.innerHTML = '<i class="fas fa-pause"></i><span>暂停</span>';
-        
+        this.overlayBtn.onclick = () => this.startGame();
+
         this.updateDisplay();
         this.drawGame();
         this.showOverlay('准备开始游戏', '按空格键或点击开始按钮开始游戏', 'fa-play-circle');
@@ -167,7 +192,12 @@ class SnakeGame {
         if (e.code === 'Space') {
             e.preventDefault();
             if (!this.gameRunning) {
-                this.startGame();
+                if (this.isGameOver) {
+                    this.restartGame();
+                    this.startGame();
+                } else {
+                    this.startGame();
+                }
             } else {
                 this.togglePause();
             }
@@ -235,32 +265,34 @@ class SnakeGame {
 
     gameLoop() {
         if (!this.gameRunning || this.gamePaused) return;
-        
+
         this.applyNextDirection();
-        this.moveSnake();
-        
+        const ateFood = this.moveSnake();
+
         if (this.checkCollision()) {
             this.gameOver();
             return;
         }
-        
-        if (this.checkFoodCollision()) {
+
+        if (ateFood) {
             this.eatFood();
         }
-        
+
         this.drawGame();
         this.updateDisplay();
-        
-        setTimeout(() => this.gameLoop(), this.gameSpeed);
+
+        this.gameLoopTimeoutId = setTimeout(() => this.gameLoop(), this.gameSpeed);
     }
 
     moveSnake() {
         const head = { x: this.snake[0].x + this.dx, y: this.snake[0].y + this.dy };
         this.snake.unshift(head);
-        
-        if (!this.checkFoodCollision()) {
+
+        const ateFood = head.x === this.food.x && head.y === this.food.y;
+        if (!ateFood) {
             this.snake.pop();
         }
+        return ateFood;
     }
 
     checkCollision() {
@@ -292,6 +324,7 @@ class SnakeGame {
         
         if (this.score > this.highScore) {
             this.highScore = this.score;
+            this.isNewHighScore = true;
             this.saveHighScore();
         }
         
@@ -302,10 +335,13 @@ class SnakeGame {
 
     showFoodEffect() {
         const head = this.snake[0];
-        const rect = this.canvas.getBoundingClientRect();
-        
-        this.foodEffect.style.left = (rect.left + head.x * this.gridSize + this.gridSize / 2) + 'px';
-        this.foodEffect.style.top = (rect.top + head.y * this.gridSize) + 'px';
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const areaRect = this.canvas.parentElement.getBoundingClientRect();
+        const offsetX = canvasRect.left - areaRect.left;
+        const offsetY = canvasRect.top - areaRect.top;
+
+        this.foodEffect.style.left = (offsetX + head.x * this.gridSize + this.gridSize / 2) + 'px';
+        this.foodEffect.style.top = (offsetY + head.y * this.gridSize) + 'px';
         this.foodEffect.classList.add('show');
         
         setTimeout(() => {
@@ -322,14 +358,19 @@ class SnakeGame {
 
     gameOver() {
         this.gameRunning = false;
+        this.isGameOver = true;
         this.startBtn.disabled = false;
         this.pauseBtn.disabled = true;
-        
-        const isHighScore = this.score === this.highScore && this.score > 0;
-        const title = isHighScore ? '新纪录！' : '游戏结束';
+
+        if (this.gameLoopTimeoutId) {
+            clearTimeout(this.gameLoopTimeoutId);
+            this.gameLoopTimeoutId = null;
+        }
+
+        const title = this.isNewHighScore ? '新纪录！' : '游戏结束';
         const message = `得分: ${this.score} | 长度: ${this.snake.length} | 食物: ${this.foodCount}`;
-        
-        this.showOverlay(title, message, isHighScore ? 'fa-crown' : 'fa-skull');
+
+        this.showOverlay(title, message, this.isNewHighScore ? 'fa-crown' : 'fa-skull');
         this.overlayBtn.innerHTML = '<i class="fas fa-redo"></i>重新开始';
         this.overlayBtn.onclick = () => this.restartGame();
     }
@@ -518,8 +559,9 @@ class SnakeGame {
         const deltaX = Math.cos(angle) * velocity;
         const deltaY = Math.sin(angle) * velocity;
         
+        particle.style.setProperty('--tx', `${deltaX * 20}px`);
+        particle.style.setProperty('--ty', `${deltaY * 20}px`);
         particle.style.animation = 'particle 0.8s ease-out forwards';
-        particle.style.transform = `translate(${deltaX * 20}px, ${deltaY * 20}px)`;
         
         setTimeout(() => {
             if (particle.parentNode) {
